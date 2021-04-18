@@ -1,7 +1,7 @@
 ﻿using NaiveSSDTest.Core;
+using NaiveSSDTest.Services;
 using NaiveSSDTest.Views;
 using Prism.Ioc;
-using Prism.Modularity;
 using System.Windows;
 
 namespace NaiveSSDTest
@@ -11,8 +11,6 @@ namespace NaiveSSDTest
     /// </summary>
     public partial class App
     {
-        private TestData testData;
-
         protected override Window CreateShell()
         {
             return Container.Resolve<MainWindow>();
@@ -20,15 +18,10 @@ namespace NaiveSSDTest
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
-            testData = new TestData();
-            testData.CreateDefaultConfiguration();
-            containerRegistry.RegisterInstance(testData);
-        }
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            testData.Cleanup();
-            base.OnExit(e);
+            containerRegistry.RegisterSingleton<CopyManager>();
+            containerRegistry.RegisterSingleton<DataManager>();
+            containerRegistry.RegisterSingleton<AppConfig>();
+            containerRegistry.RegisterSingleton<ProgressService>();
         }
     }
 }

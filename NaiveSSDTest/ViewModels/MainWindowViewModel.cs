@@ -1,11 +1,10 @@
-﻿using JToolbox.Core.Utilities;
-using Microsoft.VisualBasic.FileIO;
+﻿using JToolbox.WPF.Core;
 using NaiveSSDTest.Core;
+using NaiveSSDTest.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,26 +13,53 @@ namespace NaiveSSDTest.ViewModels
 {
     public class MainWindowViewModel : BindableBase
     {
+        private string title;
         private string busyMessage;
         private string messages;
         private DriveViewModel selectedDrive;
-        private TestData testData;
+        private TestViewModel selectedTest;
+        private readonly AppConfig appConfig;
+        private readonly CopyManager copyManager;
+        private readonly DataManager dataManager;
+        private readonly ProgressService progressService;
+        private bool running;
 
-        public MainWindowViewModel(TestData testData)
+        public MainWindowViewModel(AppConfig appConfig, CopyManager copyManager, DataManager dataManager, ProgressService progressService)
         {
-            this.testData = testData;
-            Drives = new ObservableCollection<DriveViewModel>(
-                DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed)
-                .Select(d => new DriveViewModel(d)));
-            SelectedDrive = Drives.First();
+            this.appConfig = appConfig;
+            this.copyManager = copyManager;
+            this.dataManager = dataManager;
+            this.progressService = progressService;
+
+            Title = $"Naive SSD Test ({appConfig.TasksCount} workers)";
+            InitializeDrives();
+            InitializeTests();
+
+            copyManager.TasksCount = appConfig.TasksCount;
+            dataManager.TasksCount = appConfig.TasksCount;
+            dataManager.ForceFilesCreation = false;
         }
 
         public ObservableCollection<DriveViewModel> Drives { get; set; }
+
+        public ObservableCollection<TestViewModel> Tests { get; set; }
+
+        public string Title
+        {
+            get => title;
+            set => SetProperty(ref title, value);
+        }
 
         public DriveViewModel SelectedDrive
         {
             get => selectedDrive;
             set => SetProperty(ref selectedDrive, value);
+        }
+
+        public TestViewModel SelectedTest
+        {
+            get => selectedTest;
+            set => SetProperty(ref selectedTest, value);
         }
 
         public bool IsBusy { get; set; }
@@ -54,9 +80,46 @@ namespace NaiveSSDTest.ViewModels
             get => messages;
             set
             {
-                messages = value + Environment.NewLine + messages;
-                RaisePropertyChanged(nameof(Messages));
+                Threading.SafeInvoke(() =>
+                {
+                    messages += value + Environment.NewLine;
+                    RaisePropertyChanged(nameof(Messages));
+                });
             }
+        }
+
+        private void InitializeDrives()
+        {
+            Drives = new ObservableCollection<DriveViewModel>(
+                   DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed)
+                   .Select(d => new DriveViewModel(d)));
+            SelectedDrive = Drives.First();
+        }
+
+        private void InitializeTests()
+        {
+            Tests = new ObservableCollection<TestViewModel>
+            {
+                new BuiltInLinearTestViewModel(this, copyManager, dataManager, progressService),
+                new BuiltInRandomTestViewModel(this, copyManager, dataManager, progressService),
+                new WindowsDefaultTestViewModel(this, copyManager, dataManager, progressService)
+            };
+            SelectedTest = Tests.First();
+        }
+
+        public bool CheckClose()
+        {
+            return !running;
+        }
+
+        public async Task Cleanup()
+        {
+            BusyMessage = "Cleaning up...";
+            await Task.Run(() =>
+            {
+                copyManager.Cleaner.Cleanup();
+                dataManager.Cleaner.Cleanup();
+            });
         }
 
         public DelegateCommand RunCommand => new DelegateCommand(async () =>
@@ -64,21 +127,9 @@ namespace NaiveSSDTest.ViewModels
             var targetPath = string.Empty;
             try
             {
-                BusyMessage = "Preparing test data. Please wait...";
-                var path = SelectedDrive.DriveInfo.RootDirectory.FullName;
-                Messages = $"Preparing test data for {path}";
-                await Task.Run(() => testData.CreateTestDataStructure(path));
-                Messages = $"Test data files: {testData.TotalFiles}, {Misc.BytesToString(testData.TotalSize)}";
-
-                BusyMessage = "Test started. Please wait...";
-                await Task.Delay(2000);
-                var sourcePath = Path.Combine(path, testData.Folder);
-                targetPath = Path.Combine(path, testData.Folder + "_COPY");
-                var stopwatch = Stopwatch.StartNew();
-                Microsoft.VisualBasic.FileIO.FileSystem.CopyDirectory(sourcePath, targetPath, UIOption.AllDialogs, UICancelOption.ThrowException);
-                var elapsed = stopwatch.Elapsed.TotalSeconds;
-                var averageSpeed = (long)Math.Round(testData.TotalSize / elapsed);
-                Messages = $"Test finished in: {Math.Round(elapsed, 2)}s with average speed: {Misc.BytesToString(averageSpeed)}/s";
+                running = true;
+                var configuration = new Configuration(SelectedDrive.DriveInfo.RootDirectory.FullName);
+                await SelectedTest.Run(configuration);
             }
             catch (OperationCanceledException)
             {
@@ -91,11 +142,9 @@ namespace NaiveSSDTest.ViewModels
             finally
             {
                 BusyMessage = "Cleaning up...";
-                if (Directory.Exists(targetPath))
-                {
-                    Directory.Delete(targetPath, true);
-                }
+                await SelectedTest.Clean();
                 BusyMessage = null;
+                running = false;
             }
         });
     }

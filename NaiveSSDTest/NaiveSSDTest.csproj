@@ -57,6 +57,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Services\ProgressService.cs" />
+    <Compile Include="ViewModels\BuiltInTestViewModel.cs" />
+    <Compile Include="ViewModels\BuiltInRandomTestViewModel.cs" />
+    <Compile Include="ViewModels\FileCopyProgressViewModel.cs" />
+    <Compile Include="ViewModels\FileCreateProgressViewModel.cs" />
+    <Compile Include="ViewModels\ProgressViewModel.cs" />
+    <Compile Include="ViewModels\BuiltInLinearTestViewModel.cs" />
+    <Compile Include="ViewModels\WindowsDefaultTestViewModel.cs" />
+    <Compile Include="Views\ProgressWindow.xaml.cs">
+      <DependentUpon>ProgressWindow.xaml</DependentUpon>
+    </Compile>
     <Page Include="Views\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -65,12 +76,18 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Services\AppConfig.cs" />
     <Compile Include="ViewModels\DriveViewModel.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
+    <Compile Include="ViewModels\TestViewModel.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Views\ProgressWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -90,6 +107,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="App.config" />
     <None Include="FodyWeavers.xsd">
       <SubType>Designer</SubType>
     </None>
@@ -113,6 +131,14 @@
     <ProjectReference Include="..\JToolbox\JToolbox.Core\JToolbox.Core.csproj">
       <Project>{7FEDB1DB-4787-4BB7-AC7F-0DA10EE91031}</Project>
       <Name>JToolbox.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\JToolbox\Misc\JToolbox.AppConfig\JToolbox.AppConfig.csproj">
+      <Project>{7ACE141D-B773-41AB-A8DC-467D98A4C821}</Project>
+      <Name>JToolbox.AppConfig</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\JToolbox\WPF\JToolbox.WPF.Core\JToolbox.WPF.Core.csproj">
+      <Project>{56BEE9B3-2FCB-46E7-A837-D07F0BFCBD98}</Project>
+      <Name>JToolbox.WPF.Core</Name>
     </ProjectReference>
     <ProjectReference Include="..\NaiveSSDTest.Core\NaiveSSDTest.Core.csproj">
       <Project>{BFFB2CFC-3615-4256-B934-E78F5CD9A6CE}</Project>
